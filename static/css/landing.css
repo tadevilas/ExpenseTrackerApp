@@ -1,0 +1,217 @@
+/* ------------------------------------------------------------------ */
+/* Landing hero — centered single-column with dashboard mock           */
+/* Overrides the .hero* rules from style.css by loading afterwards.    */
+/* ------------------------------------------------------------------ */
+
+.hero {
+    display: block;
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 4.5rem 1.5rem 5rem;
+    text-align: center;
+}
+
+.hero-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+
+/* Badge -------------------------------------------------------------- */
+
+.hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    background: var(--accent-light);
+    color: var(--accent);
+    padding: 0.5rem 1.1rem;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+    margin-bottom: 2.25rem;
+}
+
+.hero-badge-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex: none;
+}
+
+/* Title -------------------------------------------------------------- */
+
+.hero-title {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    margin-bottom: 1.75rem;
+    max-width: 900px;
+}
+
+.hero-title-accent {
+    color: var(--accent);
+    display: block;
+}
+
+/* Subtitle ----------------------------------------------------------- */
+
+.hero-subtitle {
+    max-width: 620px;
+    font-size: 1.15rem;
+    line-height: 1.6;
+    color: var(--ink-muted);
+    margin-bottom: 2.5rem;
+}
+
+/* Actions ------------------------------------------------------------ */
+
+.hero-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 4rem;
+}
+
+.btn-hero {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 1rem 1.9rem;
+    border-radius: 999px;
+    font-size: 1rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.2s, transform 0.2s;
+}
+
+.btn-hero:hover {
+    background: var(--ink-soft);
+    transform: translateY(-1px);
+}
+
+/* Dashboard mock ----------------------------------------------------- */
+
+.hero-dashboard {
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto;
+    background: var(--paper-warm);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    text-align: left;
+}
+
+.dash-chrome {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+    padding-left: 0.25rem;
+}
+
+.dash-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.dash-dot-r { background: #e86c6c; }
+.dash-dot-y { background: #e8b043; }
+.dash-dot-g { background: #4fbfa6; }
+
+.dash-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.dash-stat {
+    background: var(--paper-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 1.15rem 1.25rem;
+}
+
+.dash-stat-label {
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+    margin-bottom: 0.45rem;
+}
+
+.dash-stat-value {
+    font-family: var(--font-display);
+    font-size: 1.8rem;
+    color: var(--ink);
+    line-height: 1.1;
+    margin-bottom: 0.5rem;
+}
+
+.dash-stat-meta {
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+}
+
+.dash-stat-meta-neg { color: var(--danger); }
+.dash-stat-meta-pos { color: var(--accent); }
+
+.dash-bars {
+    background: var(--paper-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 1.5rem 1.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.15rem;
+}
+
+.dash-bar-row {
+    display: grid;
+    grid-template-columns: 70px 1fr;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.dash-bar-label {
+    font-size: 0.9rem;
+    color: var(--ink-soft);
+}
+
+.dash-bar-track {
+    height: 10px;
+    background: #ece9e0;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.dash-bar {
+    height: 100%;
+    border-radius: 999px;
+}
+
+.dash-bar-food   { background: #e5a03a; }
+.dash-bar-travel { background: #5090d6; }
+.dash-bar-bills  { background: #8b7cc7; }
+
+/* Kill the old two-column visual — no longer used in the new markup. */
+.hero-visual { display: none; }
+
+/* Responsive --------------------------------------------------------- */
+
+@media (max-width: 700px) {
+    .hero { padding: 3rem 1rem 3.5rem; }
+    .hero-actions { margin-bottom: 3rem; }
+    .dash-stats { grid-template-columns: 1fr; }
+    .dash-bar-row { grid-template-columns: 56px 1fr; gap: 0.85rem; }
+}
