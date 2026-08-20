@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(.\\\\venv\\\\Scripts\\\\python.exe -m pip install -r requirements.txt)",
+      "PowerShell(.\\\\venv\\\\Scripts\\\\python.exe -m pip list)"
+    ]
+  }
+}
