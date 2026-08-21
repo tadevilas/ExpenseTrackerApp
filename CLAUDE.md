@@ -16,6 +16,51 @@ All commands assume the venv is active (`.\venv\Scripts\Activate.ps1` in PowerSh
 - **Install deps:** `pip install -r requirements.txt`
 - **Tests:** `pytest` — no tests exist yet, but `pytest` and `pytest-flask` are already pinned. Run a single test with `pytest path/to/test_file.py::test_name`.
 
+## Project structure
+
+```
+Lab 1/
+├── app.py                  # Flask app + all routes (single-module, no blueprints)
+├── requirements.txt        # flask 3.1.3, werkzeug 3.1.6, pytest 8.3.5, pytest-flask 1.3.0
+├── expense_tracker.db      # SQLite file (gitignored, created by init_db())
+├── database/
+│   ├── __init__.py         # empty — package marker only
+│   └── db.py               # Step 1: get_db() / init_db() / seed_db() (currently stub)
+├── templates/              # Jinja2 templates — all extend base.html
+│   ├── base.html           # navbar, footer, Spendly brand, font imports, {% block content %}
+│   ├── landing.html        # marketing landing page (redesigned hero + "See how it works" modal)
+│   ├── register.html       # POSTs to /register, renders {% if error %} block
+│   ├── login.html          # POSTs to /login, renders {% if error %} block
+│   ├── terms.html
+│   └── privacy.html
+├── static/
+│   ├── css/
+│   │   ├── style.css       # shared styles used by base.html
+│   │   └── landing.css     # landing-page-specific styles
+│   └── js/
+│       └── main.js
+└── venv/                   # local virtualenv (gitignored)
+```
+
+## Routes
+
+Defined in `app.py`. All are GET unless noted — POST handlers for auth are added in a later step.
+
+| Method | Path                        | View function      | Status                          |
+|--------|-----------------------------|--------------------|---------------------------------|
+| GET    | `/`                         | `landing`          | implemented (renders landing)   |
+| GET    | `/register`                 | `register`         | implemented (form only, GET)    |
+| GET    | `/login`                    | `login`            | implemented (form only, GET)    |
+| GET    | `/terms`                    | `terms`            | implemented                     |
+| GET    | `/privacy`                  | `privacy`          | implemented                     |
+| GET    | `/logout`                   | `logout`           | placeholder — Step 3            |
+| GET    | `/profile`                  | `profile`          | placeholder — Step 4            |
+| GET    | `/expenses/add`             | `add_expense`      | placeholder — Step 7            |
+| GET    | `/expenses/<int:id>/edit`   | `edit_expense`     | placeholder — Step 8            |
+| GET    | `/expenses/<int:id>/delete` | `delete_expense`   | placeholder — Step 9            |
+
+Note: `templates/login.html` and `templates/register.html` already `method="POST"` to `/login` and `/register`, so the auth step needs to add `methods=["GET", "POST"]` to those existing view functions rather than create new ones.
+
 ## Architecture
 
 **Single-module Flask app**, not blueprints. All routes live in `app.py` against the top-level `app = Flask(__name__)`. Do not restructure into blueprints unless a step explicitly calls for it.
