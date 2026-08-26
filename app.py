@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import datetime
 
 from flask import Flask, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -7,6 +8,12 @@ from database.db import get_db, init_db, seed_db
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "dev-secret-change-me"
+
+
+@app.template_filter('rupee')
+def rupee_format(value):
+    return f"₹{value:,.0f}"
+
 
 with app.app_context():
     init_db()
@@ -53,7 +60,7 @@ def register():
 
     session["user_id"]   = user_id
     session["user_name"] = name
-    return redirect(url_for("dashboard"))
+    return redirect(url_for("profile"))
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -80,14 +87,7 @@ def login():
 
     session["user_id"]   = user["id"]
     session["user_name"] = user["name"]
-    return redirect(url_for("dashboard"))
-
-
-@app.route("/dashboard")
-def dashboard():
-    if not session.get("user_id"):
-        return redirect(url_for("login"))
-    return render_template("dashboard.html", name=session["user_name"])
+    return redirect(url_for("profile"))
 
 
 @app.route("/terms")
@@ -112,7 +112,81 @@ def logout():
 
 @app.route("/profile")
 def profile():
-    return "Profile page — coming in Step 4"
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+
+    conn = get_db()
+    try:
+        user = conn.execute(
+            "SELECT * FROM users WHERE id = ?",
+            (session["user_id"],)
+        ).fetchone()
+
+        if user is None:
+            session.clear()
+            return redirect(url_for("login"))
+
+        total_this_month = conn.execute(
+            """SELECT COALESCE(SUM(amount), 0) FROM expenses
+               WHERE user_id = ?
+               AND strftime('%Y-%m', date) = strftime('%Y-%m', 'now')""",
+            (session["user_id"],)
+        ).fetchone()[0]
+
+        total_all_time = conn.execute(
+            "SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE user_id = ?",
+            (session["user_id"],)
+        ).fetchone()[0]
+
+        expense_count = conn.execute(
+            "SELECT COUNT(*) FROM expenses WHERE user_id = ?",
+            (session["user_id"],)
+        ).fetchone()[0]
+
+        top_row = conn.execute(
+            """SELECT category FROM expenses WHERE user_id = ?
+               GROUP BY category ORDER BY SUM(amount) DESC LIMIT 1""",
+            (session["user_id"],)
+        ).fetchone()
+        top_category = top_row["category"] if top_row else None
+
+        category_rows = conn.execute(
+            """SELECT category, SUM(amount) AS total FROM expenses
+               WHERE user_id = ?
+               GROUP BY category ORDER BY total DESC""",
+            (session["user_id"],)
+        ).fetchall()
+        categories_chart = [{"category": r["category"], "total": r["total"]} for r in category_rows]
+
+        daily_rows = conn.execute(
+            """SELECT date, SUM(amount) AS total FROM expenses
+               WHERE user_id = ?
+               AND strftime('%Y-%m', date) = strftime('%Y-%m', 'now')
+               GROUP BY date ORDER BY date""",
+            (session["user_id"],)
+        ).fetchall()
+        daily_chart = [{"date": r["date"], "total": r["total"]} for r in daily_rows]
+        max_daily = max((r["total"] for r in daily_rows), default=0)
+
+    finally:
+        conn.close()
+
+    member_since = datetime.strptime(
+        user["created_at"][:10], "%Y-%m-%d"
+    ).strftime("%B %Y")
+
+    return render_template(
+        "profile.html",
+        user=user,
+        member_since=member_since,
+        total_this_month=total_this_month,
+        total_all_time=total_all_time,
+        expense_count=expense_count,
+        top_category=top_category,
+        categories_chart=categories_chart,
+        daily_chart=daily_chart,
+        max_daily=max_daily,
+    )
 
 
 @app.route("/expenses/add")
