@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+
+{% block title %}Profile — Spendly{% endblock %}
+
+{% block head %}
+<style>
+  /* Chart tokens — slot-1 blue from the validated categorical palette */
+  .expense-chart {
+    --bar:        #2a78d6;
+    --bar-hover:  #1c5cab;
+    --chart-text: #52514e;
+    --gridline:   #e1e0d9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .expense-chart {
+      --bar:        #3987e5;
+      --bar-hover:  #6da7ec;
+      --chart-text: #c3c2b7;
+      --gridline:   #2c2c2a;
+    }
+  }
+  :root[data-theme="dark"] .expense-chart {
+    --bar:        #3987e5;
+    --bar-hover:  #6da7ec;
+    --chart-text: #c3c2b7;
+    --gridline:   #2c2c2a;
+  }
+
+  /* Shared card shell */
+  .profile-card {
+    background: var(--paper-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.06);
+  }
+
+  /* Lucide icon size helpers */
+  .icon-16 svg { width: 16px; height: 16px; }
+  .icon-20 svg { width: 20px; height: 20px; }
+
+  /* Chart layout */
+  .expense-chart { padding: 1.5rem; }
+  .chart-rows    { display: flex; flex-direction: column; gap: 8px; }
+  .chart-row     { display: grid; grid-template-columns: 110px 1fr auto; align-items: center; gap: 12px; }
+
+  .chart-cat {
+    font-size: 0.85rem;
+    color: var(--chart-text);
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .chart-bar-bg {
+    position: relative;
+    height: 20px;
+    background: var(--gridline);
+    border-radius: 4px;
+  }
+
+  .chart-bar {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    background: var(--bar);
+    border-radius: 0 4px 4px 0;
+    min-width: 4px;
+    transition: background 0.12s;
+  }
+  .chart-bar:hover { background: var(--bar-hover); cursor: default; }
+
+  .chart-val {
+    font-size: 0.8rem;
+    color: var(--chart-text);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    min-width: 58px;
+  }
+
+  /* Daily spending column chart */
+  .daily-plot {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    height: 120px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+  .daily-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    min-width: 20px;
+    max-width: 40px;
+    cursor: default;
+  }
+  .daily-bar-wrap {
+    width: 100%;
+    display: flex;
+    align-items: flex-end;
+    height: 100px;
+  }
+  .daily-bar {
+    width: 100%;
+    background: var(--bar);
+    border-radius: 3px 3px 0 0;
+    min-height: 3px;
+    transition: background 0.12s;
+  }
+  .daily-col:hover .daily-bar { background: var(--bar-hover); }
+  .daily-date {
+    font-size: 0.7rem;
+    color: var(--chart-text);
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+  }
+
+  #chart-tip {
+    position: fixed;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 200;
+    display: none;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section style="max-width: var(--max-width); margin: 3rem auto; padding: 0 2rem;">
+
+    <!-- User info card -->
+    <div class="profile-card" style="padding: 2rem; display: flex; align-items: center; gap: 24px; margin-bottom: 2rem;">
+        <div style="
+            width: 64px; height: 64px; border-radius: 50%; flex-shrink: 0;
+            background: var(--accent); color: var(--paper);
+            display: flex; align-items: center; justify-content: center;
+            font-family: var(--font-display); font-size: 1.75rem;
+        ">{{ user.name[0].upper() }}</div>
+        <div>
+            <h1 style="font-family: var(--font-display); color: var(--ink); font-size: 1.6rem; margin: 0 0 4px;">
+                {{ user.name }}
+            </h1>
+            <p style="color: var(--ink-muted); margin: 0 0 2px; font-size: 0.95rem;">{{ user.email }}</p>
+            <p style="color: var(--ink-faint); margin: 0; font-size: 0.85rem;">Member since {{ member_since }}</p>
+        </div>
+    </div>
+
+    <!-- Spending summary heading -->
+    <h2 style="font-family: var(--font-display); color: var(--ink); font-size: 1.2rem; margin: 0 0 16px; display: flex; align-items: center; gap: 8px;">
+        <i data-lucide="trending-up" class="icon-20" style="color: var(--ink-muted);"></i>
+        Spending Summary
+    </h2>
+
+    <!-- Stat cards -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px;">
+
+        <div class="profile-card" style="padding: 24px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <i data-lucide="calendar" class="icon-16" style="color: var(--ink-muted);"></i>
+                <p style="color: var(--ink-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; margin: 0;">This Month</p>
+            </div>
+            <p style="color: var(--accent); font-family: var(--font-display); font-size: 1.5rem; margin: 0; font-variant-numeric: tabular-nums;">{{ total_this_month | rupee }}</p>
+        </div>
+
+        <div class="profile-card" style="padding: 24px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <i data-lucide="wallet" class="icon-16" style="color: var(--ink-muted);"></i>
+                <p style="color: var(--ink-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; margin: 0;">All Time</p>
+            </div>
+            <p style="color: var(--ink); font-family: var(--font-display); font-size: 1.5rem; margin: 0; font-variant-numeric: tabular-nums;">{{ total_all_time | rupee }}</p>
+        </div>
+
+        <div class="profile-card" style="padding: 24px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <i data-lucide="receipt" class="icon-16" style="color: var(--ink-muted);"></i>
+                <p style="color: var(--ink-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; margin: 0;">Expenses</p>
+            </div>
+            <p style="color: var(--ink); font-family: var(--font-display); font-size: 1.5rem; margin: 0; font-variant-numeric: tabular-nums;">{{ expense_count }}</p>
+        </div>
+
+        <div class="profile-card" style="padding: 24px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <i data-lucide="tag" class="icon-16" style="color: var(--ink-muted);"></i>
+                <p style="color: var(--ink-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; margin: 0;">Top Category</p>
+            </div>
+            <p style="color: var(--accent-2); font-family: var(--font-display); font-size: 1.5rem; margin: 0;">{{ top_category or '—' }}</p>
+        </div>
+
+    </div>
+
+    {% if expense_count == 0 %}
+    <p style="margin-top: 24px; padding: 12px 16px; background: var(--accent-light); border-radius: var(--radius-sm); color: var(--ink-muted); font-size: 0.95rem;">
+        No expenses recorded yet. Add your first one to see stats here.
+    </p>
+    {% endif %}
+
+    <!-- Category bar chart -->
+    {% if categories_chart %}
+    <div class="expense-chart profile-card" style="margin-top: 2rem;">
+        <h2 style="font-family: var(--font-display); color: var(--ink); font-size: 1.2rem; margin: 0 0 20px; display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="bar-chart-2" class="icon-20" style="color: var(--ink-muted);"></i>
+            Spending by Category
+        </h2>
+        <div class="chart-rows">
+            {% set max_total = categories_chart[0].total %}
+            {% for item in categories_chart %}
+            {% set pct = (item.total / max_total * 100) | round(1) %}
+            <div class="chart-row">
+                <span class="chart-cat">{{ item.category }}</span>
+                <div class="chart-bar-bg" data-tip="{{ item.category }}: {{ item.total | rupee }}">
+                    <div class="chart-bar" style="width: {{ pct }}%;"></div>
+                </div>
+                <span class="chart-val">{{ item.total | rupee }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Daily spending column chart -->
+    {% if daily_chart %}
+    <div class="expense-chart profile-card" style="margin-top: 1.5rem;">
+        <h2 style="font-family: var(--font-display); color: var(--ink); font-size: 1.2rem; margin: 0 0 20px; display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="activity" class="icon-20" style="color: var(--ink-muted);"></i>
+            Daily Spending — This Month
+        </h2>
+        <div class="daily-plot">
+            {% for item in daily_chart %}
+            {% set h = (item.total / max_daily * 100) | round(1) %}
+            {% set day = item.date[8:] %}
+            <div class="daily-col" data-tip="{{ item.date }}: {{ item.total | rupee }}">
+                <div class="daily-bar-wrap">
+                    <div class="daily-bar" style="height: {{ h }}%;"></div>
+                </div>
+                <span class="daily-date">{{ day }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+</section>
+
+<div id="chart-tip" role="tooltip"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  lucide.createIcons();
+  (function () {
+    var tip = document.getElementById('chart-tip');
+    function attachTip(el) {
+      el.addEventListener('mouseenter', function () {
+        tip.textContent = el.dataset.tip;
+        tip.style.display = 'block';
+      });
+      el.addEventListener('mousemove', function (e) {
+        tip.style.left = (e.clientX + 14) + 'px';
+        tip.style.top  = (e.clientY - 28) + 'px';
+      });
+      el.addEventListener('mouseleave', function () {
+        tip.style.display = 'none';
+      });
+    }
+    document.querySelectorAll('.chart-bar-bg, .daily-col').forEach(attachTip);
+  })();
+</script>
+{% endblock %}
