@@ -168,6 +168,12 @@ def profile():
         daily_chart = [{"date": r["date"], "total": r["total"]} for r in daily_rows]
         max_daily = max((r["total"] for r in daily_rows), default=0)
 
+        recent_expenses = conn.execute(
+            """SELECT * FROM expenses WHERE user_id = ?
+               ORDER BY date DESC, id DESC LIMIT 10""",
+            (session["user_id"],)
+        ).fetchall()
+
     finally:
         conn.close()
 
@@ -186,6 +192,7 @@ def profile():
         categories_chart=categories_chart,
         daily_chart=daily_chart,
         max_daily=max_daily,
+        recent_expenses=recent_expenses,
     )
 
 
