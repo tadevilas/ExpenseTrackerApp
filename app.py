@@ -1,5 +1,5 @@
 import sqlite3
-from datetime import datetime
+from datetime import date, datetime
 
 from flask import Flask, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -110,10 +110,62 @@ def logout():
     return redirect(url_for("landing"))
 
 
+def _months_ago_start(today, n):
+    month = today.month - n
+    year = today.year
+    while month <= 0:
+        month += 12
+        year -= 1
+    return date(year, month, 1)
+
+
+def _default_this_month(today):
+    return today.replace(day=1), today, today.strftime("%B %Y")
+
+
 @app.route("/profile")
 def profile():
     if not session.get("user_id"):
         return redirect(url_for("login"))
+
+    filter_mode = request.args.get("filter", "this_month")
+    today = date.today()
+    custom_start = custom_end = ""
+
+    if filter_mode == "all":
+        start_date = end_date = None
+        period_label = "All Time"
+    elif filter_mode == "last_3":
+        start_date = _months_ago_start(today, 2)
+        end_date = today
+        period_label = "Last 3 Months"
+    elif filter_mode == "last_6":
+        start_date = _months_ago_start(today, 5)
+        end_date = today
+        period_label = "Last 6 Months"
+    elif filter_mode == "custom":
+        try:
+            start_date = date.fromisoformat(request.args.get("start", ""))
+            end_date   = date.fromisoformat(request.args.get("end", ""))
+            if start_date > end_date:
+                start_date, end_date = end_date, start_date
+            period_label = f"{start_date.strftime('%d %b')} – {end_date.strftime('%d %b %Y')}"
+            custom_start = start_date.isoformat()
+            custom_end   = end_date.isoformat()
+        except (ValueError, TypeError):
+            filter_mode = "this_month"
+            start_date, end_date, period_label = _default_this_month(today)
+    else:
+        filter_mode = "this_month"
+        start_date, end_date, period_label = _default_this_month(today)
+
+    # date_sql is built from Python literals only — no user input interpolated
+    if start_date is not None:
+        date_sql  = "AND date >= ? AND date <= ?"
+        date_args = (start_date.isoformat(), end_date.isoformat())
+    else:
+        date_sql  = ""
+        date_args = ()
 
     conn = get_db()
     try:
@@ -126,11 +178,9 @@ def profile():
             session.clear()
             return redirect(url_for("login"))
 
-        total_this_month = conn.execute(
-            """SELECT COALESCE(SUM(amount), 0) FROM expenses
-               WHERE user_id = ?
-               AND strftime('%Y-%m', date) = strftime('%Y-%m', 'now')""",
-            (session["user_id"],)
+        total_for_period = conn.execute(
+            f"SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE user_id = ? {date_sql}",
+            (session["user_id"],) + date_args
         ).fetchone()[0]
 
         total_all_time = conn.execute(
@@ -144,34 +194,33 @@ def profile():
         ).fetchone()[0]
 
         top_row = conn.execute(
-            """SELECT category FROM expenses WHERE user_id = ?
+            f"""SELECT category FROM expenses WHERE user_id = ? {date_sql}
                GROUP BY category ORDER BY SUM(amount) DESC LIMIT 1""",
-            (session["user_id"],)
+            (session["user_id"],) + date_args
         ).fetchone()
         top_category = top_row["category"] if top_row else None
 
         category_rows = conn.execute(
-            """SELECT category, SUM(amount) AS total FROM expenses
-               WHERE user_id = ?
+            f"""SELECT category, SUM(amount) AS total FROM expenses
+               WHERE user_id = ? {date_sql}
                GROUP BY category ORDER BY total DESC""",
-            (session["user_id"],)
+            (session["user_id"],) + date_args
         ).fetchall()
         categories_chart = [{"category": r["category"], "total": r["total"]} for r in category_rows]
 
         daily_rows = conn.execute(
-            """SELECT date, SUM(amount) AS total FROM expenses
-               WHERE user_id = ?
-               AND strftime('%Y-%m', date) = strftime('%Y-%m', 'now')
+            f"""SELECT date, SUM(amount) AS total FROM expenses
+               WHERE user_id = ? {date_sql}
                GROUP BY date ORDER BY date""",
-            (session["user_id"],)
+            (session["user_id"],) + date_args
         ).fetchall()
         daily_chart = [{"date": r["date"], "total": r["total"]} for r in daily_rows]
         max_daily = max((r["total"] for r in daily_rows), default=0)
 
         recent_expenses = conn.execute(
-            """SELECT * FROM expenses WHERE user_id = ?
+            f"""SELECT * FROM expenses WHERE user_id = ? {date_sql}
                ORDER BY date DESC, id DESC LIMIT 10""",
-            (session["user_id"],)
+            (session["user_id"],) + date_args
         ).fetchall()
 
     finally:
@@ -185,7 +234,7 @@ def profile():
         "profile.html",
         user=user,
         member_since=member_since,
-        total_this_month=total_this_month,
+        total_for_period=total_for_period,
         total_all_time=total_all_time,
         expense_count=expense_count,
         top_category=top_category,
@@ -193,6 +242,10 @@ def profile():
         daily_chart=daily_chart,
         max_daily=max_daily,
         recent_expenses=recent_expenses,
+        period_label=period_label,
+        filter_mode=filter_mode,
+        custom_start=custom_start,
+        custom_end=custom_end,
     )
 
 
