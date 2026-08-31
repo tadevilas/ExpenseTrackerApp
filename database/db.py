@@ -84,3 +84,15 @@ def seed_db():
         conn.commit()
     finally:
         conn.close()
+
+
+def create_expense(user_id, amount, category, expense_date, description):
+    conn = get_db()
+    try:
+        conn.execute(
+            "INSERT INTO expenses (user_id, amount, category, date, description) VALUES (?, ?, ?, ?, ?)",
+            (user_id, amount, category, expense_date, description or None),
+        )
+        conn.commit()
+    finally:
+        conn.close()
