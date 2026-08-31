@@ -129,6 +129,30 @@
     z-index: 200;
     display: none;
   }
+
+  /* Period filter buttons */
+  .filter-btn {
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--paper-card);
+    color: var(--ink-muted);
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    font-family: var(--font-body);
+    line-height: 1.5;
+  }
+  .filter-btn.active {
+    border-color: transparent;
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .filter-btn:hover:not(.active) {
+    border-color: var(--ink-muted);
+    color: var(--ink);
+  }
 </style>
 {% endblock %}
 
@@ -158,15 +182,37 @@
         Spending Summary
     </h2>
 
+    <!-- Period filter -->
+    <form method="GET" action="{{ url_for('profile') }}" id="filter-form"
+          style="margin-bottom: 1.25rem;">
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+            {% for fval, flabel in [('all','All Time'),('this_month','This Month'),('last_3','Last 3 Months'),('last_6','Last 6 Months')] %}
+            <button type="submit" name="filter" value="{{ fval }}"
+                    class="filter-btn {{ 'active' if filter_mode == fval }}">{{ flabel }}</button>
+            {% endfor %}
+            <button type="button" id="custom-toggle"
+                    class="filter-btn {{ 'active' if filter_mode == 'custom' }}">Custom</button>
+        </div>
+        <div id="custom-row"
+             style="margin-top: 10px; display: {{ 'flex' if filter_mode == 'custom' else 'none' }}; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <label style="font-size: 0.82rem; color: var(--ink-muted); font-weight: 500;">From</label>
+            <input type="date" name="start" value="{{ custom_start }}" class="form-input" style="width: auto;">
+            <label style="font-size: 0.82rem; color: var(--ink-muted); font-weight: 500;">To</label>
+            <input type="date" name="end" value="{{ custom_end }}" class="form-input" style="width: auto;">
+            <button type="submit" name="filter" value="custom" class="btn-primary"
+                    style="padding: 6px 16px; font-size: 0.82rem;">Apply</button>
+        </div>
+    </form>
+
     <!-- Stat cards -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px;">
 
         <div class="profile-card" style="padding: 24px;">
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
                 <i data-lucide="calendar" class="icon-16" style="color: var(--ink-muted);"></i>
-                <p style="color: var(--ink-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; margin: 0;">This Month</p>
+                <p style="color: var(--ink-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; margin: 0;">{{ period_label }}</p>
             </div>
-            <p style="color: var(--accent); font-family: var(--font-display); font-size: 1.5rem; margin: 0; font-variant-numeric: tabular-nums;">{{ total_this_month | rupee }}</p>
+            <p style="color: var(--accent); font-family: var(--font-display); font-size: 1.5rem; margin: 0; font-variant-numeric: tabular-nums;">{{ total_for_period | rupee }}</p>
         </div>
 
         <div class="profile-card" style="padding: 24px;">
@@ -229,7 +275,7 @@
     <div class="expense-chart profile-card" style="margin-top: 1.5rem;">
         <h2 style="font-family: var(--font-display); color: var(--ink); font-size: 1.2rem; margin: 0 0 20px; display: flex; align-items: center; gap: 8px;">
             <i data-lucide="activity" class="icon-20" style="color: var(--ink-muted);"></i>
-            Daily Spending — This Month
+            Daily Spending — {{ period_label }}
         </h2>
         <div class="daily-plot">
             {% for item in daily_chart %}
@@ -290,6 +336,15 @@
 {% block scripts %}
 <script>
   lucide.createIcons();
+  (function () {
+    var toggle = document.getElementById('custom-toggle');
+    var row    = document.getElementById('custom-row');
+    if (toggle) {
+      toggle.addEventListener('click', function () {
+        row.style.display = row.style.display === 'none' ? 'flex' : 'none';
+      });
+    }
+  })();
   (function () {
     var tip = document.getElementById('chart-tip');
     function attachTip(el) {
