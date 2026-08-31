@@ -4,7 +4,7 @@ from datetime import date, datetime
 from flask import Flask, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from database.db import get_db, init_db, seed_db
+from database.db import get_db, init_db, seed_db, CATEGORIES, create_expense
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "dev-secret-change-me"
@@ -249,9 +249,54 @@ def profile():
     )
 
 
-@app.route("/expenses/add")
+@app.route("/expenses/add", methods=["GET", "POST"])
 def add_expense():
-    return "Add expense — coming in Step 7"
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+
+    if request.method == "GET":
+        return render_template(
+            "add_expense.html",
+            categories=CATEGORIES,
+            today=date.today().isoformat(),
+        )
+
+    amount_str   = request.form.get("amount", "").strip()
+    category     = request.form.get("category", "").strip()
+    expense_date = request.form.get("date", "").strip()
+    description  = request.form.get("description", "").strip()
+
+    error = None
+    amount = None
+    if not expense_date:
+        error = "Date is required."
+    else:
+        try:
+            date.fromisoformat(expense_date)
+        except ValueError:
+            error = "Please enter a valid date."
+
+    if error is None and category not in CATEGORIES:
+        error = "Please select a valid category."
+
+    if error is None:
+        try:
+            amount = float(amount_str)
+            if amount <= 0:
+                raise ValueError
+        except ValueError:
+            error = "Amount must be a positive number."
+
+    if error:
+        return render_template(
+            "add_expense.html",
+            categories=CATEGORIES,
+            today=expense_date or date.today().isoformat(),
+            error=error,
+        )
+
+    create_expense(session["user_id"], amount, category, expense_date, description)
+    return redirect(url_for("profile"))
 
 
 @app.route("/expenses/<int:id>/edit")
